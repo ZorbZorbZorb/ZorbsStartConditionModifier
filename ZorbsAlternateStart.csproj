@@ -7,8 +7,8 @@
     <ProjectGuid>{18BDCD25-ABA1-468B-B22E-7EB5BEBFD765}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ZorbsStartConditionModifier</RootNamespace>
-    <AssemblyName>ZorbsStartConditionModifier</AssemblyName>
+    <RootNamespace>ZorbsAlternativeStart</RootNamespace>
+    <AssemblyName>ZorbsAlternativeStart</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
