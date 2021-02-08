@@ -25,7 +25,7 @@ namespace ZorbsAlternateStart {
         static void Patch(ref PlanetData planet, ref StarData star, ref GameDesc game_desc) {
             // Trick the game to spawn a barren planet as the inner most planet
             if ( planet.star.index == 0 && planet.type != EPlanetType.Ocean && planet.type != EPlanetType.Gas ) {
-                Debug.Log($"Tricking game to force planet {planet.star.id}.{planet.id} to desert");
+                Debug.Log($"alternatestart -- Forcing planet {planet.star.id}.{planet.id} to desert");
                 planet.type = EPlanetType.Desert;
             }
         }
@@ -122,13 +122,9 @@ namespace ZorbsAlternateStart {
                         Debug.Log("alternatestart -- Gas giant already in outer most orbit.");
                     }
                     // Log new system configuration
-                    StarDataHelper.LogStarPlanetInfo(star);
-                }
-                // Future code to affect the entire galaxy goes here
-                else {
+                    //StarDataHelper.LogStarPlanetInfo(star);
                 }
             }
-            //__result.birthPlanetId = innerPlanet.id;
         }
     }
 }
