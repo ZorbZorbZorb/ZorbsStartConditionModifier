@@ -13,7 +13,8 @@ namespace ZorbsAlternateStart.Helpers {
                 PlanetData planet = planets[i];
                 logString += "\r\n";
                 logString += $"planet id:{planet.id} ";
-                logString += $"planet star id:{ planet.star.id} ";
+                //logString += $"planet star id:{ planet.star.id} ";
+                logString += $"orbitRadius:{planet.orbitRadius} ";
                 logString += $"orbitIndex:{ planet.orbitIndex} ";
                 logString += $"typeString:{planet.typeString} ";
                 logString += $"orbitsAround:{planet.orbitAround} ";

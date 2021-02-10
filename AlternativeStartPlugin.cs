@@ -1,4 +1,5 @@
-﻿using System;
+﻿using System.Security;
+using System.Security.Permissions;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,8 +12,11 @@ using ZorbsAlternateStart.Helpers;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
+[module: UnverifiableCode]
+[assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
+
 namespace ZorbsAlternateStart {
-    [BepInPlugin("org.bepinex.plugins.alternatestart", "Zorbs alternative start mod", "1.0.0.0")]
+    [BepInPlugin("org.bepinex.plugins.alternatestart", "Zorbs alternative start mod", "1.1.0")]
     [BepInProcess("DSPGAME.exe")]
     public class AlternativeStartPlugin : BaseUnityPlugin {
         // Apply all patches
@@ -20,7 +24,7 @@ namespace ZorbsAlternateStart {
             Harmony.CreateAndPatchAll(typeof(AlternativeStartPlugin));
         }
 
-        // All elligable home system planets are now desert planets, thats my attack
+        // All elligable planets are now desert planets, thats my attack
         [HarmonyPrefix, HarmonyPatch(typeof(PlanetGen), "SetPlanetTheme")]
         static void Patch(ref PlanetData planet, ref StarData star, ref GameDesc game_desc) {
             // Trick the game to spawn a barren planet as the inner most planet
@@ -34,95 +38,193 @@ namespace ZorbsAlternateStart {
         [HarmonyPostfix, HarmonyPatch(typeof(UniverseGen), "CreateGalaxy")]
         static void Patch(ref GameDesc gameDesc, ref GalaxyData __result) {
             Debug.Log("alternatestart -- UniverseGen::CreateGalaxy()");
-
-            PlanetData innerPlanet = null;
-            PlanetData gasPlanet = null;
-            PlanetData gasMoon = null;
-            PlanetData outerPlanet = null;
-
+            GalaxyData galaxy = __result;
+            List<PlanetData> gasPlanets = new List<PlanetData>();
+            List<PlanetData> otherPlanets = new List<PlanetData>();
+            List<PlanetData> moons = new List<PlanetData>();
+            List<PlanetData> newMoons = new List<PlanetData>();
+            PlanetData birthPlanet = null;
+            int birthPlanetId = __result.birthPlanetId;
+            bool tooManyPlanets = false;
+            bool peacockSystem = false;
+            
+            // Find starting system
             for ( int i = 0; i < __result.stars.Length; i++ ) {
                 StarData star = __result.stars[i];
                 // If starting star
                 if (star.index == 0) {
                     StarDataHelper.LogStarPlanetInfo(star);
-                    List<PlanetData> others = new List<PlanetData>();
-                    for ( int j = 0; j < star.planets.Length; j++ ) {
-                        PlanetData planet = star.planets[j];
-                        // Logic to find the planets of the starting system
-                        switch (planet.type) {
-                            case EPlanetType.Ocean:
-                                gasMoon = planet;
-                                break;
-                            case EPlanetType.Gas:
-                                gasPlanet = planet;
-                                break;
-                            default:
-                            others.Add(planet);
-                                break;
-                        }
+                    StartModification(ref star);
+                    FinalizeModification(ref star);
+                    // Log new system configuration
+                    StarDataHelper.LogStarPlanetInfo(star);
+                }
+            }
+            
+            void StartModification(ref StarData star) {
+                for ( int j = 0; j < star.planets.Length; j++ ) {
+                    PlanetData planet = star.planets[j];
+                    // Sort planets into lists
+                    if ( birthPlanetId == planet.id ) {
+                        birthPlanet = planet;
+                        continue;
                     }
-                    // Shitcode to determine which planet is the inner and which planet is the outer planet.
-                    int outerPlanetId = -1;
-                    int innerPlanetId = -1;
-                    if (others[0].orbitIndex > others[1].orbitIndex) {
-                        outerPlanetId = others[0].id;
-                        innerPlanetId = others[1].id;
+                    else if ( planet.type == EPlanetType.Gas ) {
+                        gasPlanets.Add(planet);
+                        continue;
+                    }
+                    else if ( planet.orbitAroundPlanet != null ) {
+                        moons.Add(planet);
+                        continue;
                     }
                     else {
-                        outerPlanetId = others[1].id;
-                        innerPlanetId = others[0].id;
+                        otherPlanets.Add(planet);
                     }
-                    for ( int j = 0; j < star.planets.Length; j++ ) {
-                        PlanetData planet = star.planets[j];
-                        if (planet.id == outerPlanetId) {
-                            outerPlanet = planet;
+                }
+
+
+                // Additional checks for modded games, and extremly rare starting system configurations.
+                if ( birthPlanet == null ) {
+                    Debug.LogError("alternatestart -- Failed to find birth planet");
+                    return;
+                }
+                if ( otherPlanets.Count() + moons.Count() > 2 ) {
+                    tooManyPlanets = true;
+                    Debug.LogWarning("alternatestart -- Modded starting system detected");
+                }
+                if ( otherPlanets.Count() == 0 && moons.Count() == 0 ) {
+                    Debug.LogWarning("alternatestart -- Not enough planets to change starting system");
+                    return;
+                }
+                if ( otherPlanets.Count() == 0 && moons.Count() > 0 ) {
+                    peacockSystem = true;
+                    Debug.LogWarning("alternatestart -- Peacock system detected");
+                    if ( tooManyPlanets ) {
+                        Debug.LogWarning("alternatestart -- System is very strange");
+                        if ( gasPlanets.Count() == 0 ) {
+                            Debug.LogError("alternatestart -- Not possible to modify starting system. No other planets except birth planet.");
+                            return;
                         }
-                        if (planet.id == innerPlanetId) {
-                            innerPlanet = planet;
+
+                        return;
+                    }
+                }
+
+                // Prior run detection;
+                if ( birthPlanet.orbitAroundPlanet == null ) {
+                    Debug.LogWarning("alternatestart -- System was already modified");
+                    return;
+                }
+
+                Debug.Log("alternatestart -- Started system modification");
+                if ( peacockSystem ) {
+                    MoveSystemPeacock();
+                }
+                else {
+                    MoveSystemNormal();
+                }
+            }
+
+            void FinalizeModification(ref StarData star) {
+                CorrectOrbits();
+                for ( int i = 0; i < gasPlanets.Count(); i++ ) {
+                    PlanetData gasPlanet = gasPlanets[i];
+                    RevokeSingularities(ref gasPlanet);
+                }
+                if (newMoons.Count > 1) {
+                    // The starting planet having multiple moons and horizontal rotation is rare and might be cool.
+
+                    //birthPlanet.singularity = EPlanetSingularity.MultipleSatellites;
+                    //Debug.Log($"alternatestart -- Added plural satellites singularity to planet {birthPlanet.id}");
+                }
+            }
+
+            void MoveSystemPeacock() {
+                birthPlanet.orbitRadius = 0.6f;
+                birthPlanet.orbitInclination *= 1.2f;
+                birthPlanet.orbitAroundPlanet = null;
+                birthPlanet.orbitAround = 0;
+                birthPlanet.orbitIndex = 1;
+
+                for ( int i = 0; i < moons.Count(); i++ ) {
+                    PlanetData moon = moons[i];
+                    PlanetDataHelper.StealMoon(ref birthPlanet, ref moon);
+                    newMoons.Add(moon);
+                    if (newMoons.Count() >= 2) {
+                        Debug.Log("alternatestart -- Finished swapping planets");
+                        CorrectOrbits();
+                        return;
+                    }
+                }
+            }
+
+            void MoveSystemNormal() {
+                PlanetData lowest = otherPlanets[0];
+                foreach(PlanetData planet in otherPlanets) {
+                    if (planet.orbitRadius < lowest.orbitRadius) {
+                        lowest = planet;
+                    }
+                }
+                Debug.Log($"alternatestart -- The lowest orbit radius planet was {lowest.id}");
+                PlanetDataHelper.SwapPlanets(ref lowest, ref birthPlanet);
+                PlanetDataHelper.StealMoon(ref birthPlanet, ref lowest);
+                newMoons.Add(lowest);
+                for ( int i = 0; i < moons.Count(); i++ ) {
+                    PlanetData moon = moons[i];
+                    if (moon.orbitAround != birthPlanet.id && !newMoons.Contains(moon)) {
+                        PlanetDataHelper.StealMoon(ref birthPlanet, ref moon);
+                        newMoons.Add(moon);
+                        if ( newMoons.Count() >= 2 ) {
+                            CorrectOrbits();
+                            return;
                         }
-                    }
-                    
-                    //Move planets within the starter system
-                    if (innerPlanet == null) {
-                        Debug.LogError("alternatestart -- Failed to find inner planet");
-                        return;
-                    }
-                    if ( outerPlanet == null ) {
-                        Debug.LogError("alternatestart -- Failed to find outer planet");
-                        return;
-                    }
-                    if ( gasPlanet == null ) {
-                        Debug.LogError("alternatestart -- Failed to find gas planet");
-                        return;
-                    }
-                    if ( gasMoon == null ) {
-                        Debug.LogError("alternatestart -- Failed to find gas moon");
-                        return;
                     }
 
-                    // Swap the inner planets orbit with the gas giants moon
-                    if (innerPlanet?.orbitAroundPlanet?.id != gasPlanet.id) {
-                        PlanetDataHelper.SwapPlanets(ref innerPlanet, ref gasMoon);
+                }
+                Debug.Log("alternatestart -- Finished swapping planets");
+            }
+            
+            void CorrectOrbits() {
+                // Order the moons by orbit radius, lowest to highest
+                List<PlanetData> orderedMoons = new List<PlanetData>();
+                for ( int i = 0; i < newMoons.Count(); i++ ) {
+                    PlanetData lowest = newMoons[i];
+                    for ( int j = 0; j < newMoons.Count(); j++ ) {
+                        if (orderedMoons.Contains(newMoons[j])) {
+                            continue;
+                        }
+                        if (lowest.orbitRadius > newMoons[j].orbitRadius) {
+                            lowest = newMoons[j];
+                        }
                     }
-                    else {
-                        Debug.Log("alternatestart -- Inner planet already swapped with gas moon.");
+                    orderedMoons.Add(lowest);
+                }
+
+                for ( int i = 0; i < newMoons.Count() - 1; i++ ) {
+                    PlanetData moon = newMoons[i];
+                    PlanetData nextMoon = newMoons[i + 1];
+                    float difference = nextMoon.orbitRadius - moon.orbitRadius;
+                    Debug.Log(moon.orbitRadius);
+                    Debug.Log(nextMoon.orbitRadius);
+                    Debug.Log("    " + difference);
+                }
+                Debug.Log("alternatestart -- Finished correcting orbits");
+            }
+
+            // Remove any dangling multiple moon singularities from gas giants that no longer deserve them
+            void RevokeSingularities(ref PlanetData gasGiant) {
+                int moonCount = 0;
+                for ( int i = 0; i < gasGiant.star.planets.Count(); i++ ) {
+                    PlanetData planet = gasGiant.star.planets[i];
+                    if (planet.orbitAround == gasGiant.id) {
+                        if (moonCount ++ > 1) {
+                            return;
+                        }
                     }
-                    // Steal the gas giants moon for the inner planet
-                    if (innerPlanet?.orbitAroundPlanet?.id != gasMoon.id) {
-                        PlanetDataHelper.StealMoon(ref gasMoon, ref innerPlanet);
-                    }
-                    else {
-                        Debug.Log("alternatestart -- Gas moon already orbiting inner planet.");
-                    }
-                    // Move the gas giant to the outer most orbit
-                    if ( gasPlanet.orbitIndex < outerPlanet.orbitIndex ) {
-                        PlanetDataHelper.SwapPlanets(ref outerPlanet, ref gasPlanet);
-                    }
-                    else {
-                        Debug.Log("alternatestart -- Gas giant already in outer most orbit.");
-                    }
-                    // Log new system configuration
-                    //StarDataHelper.LogStarPlanetInfo(star);
+                }
+                if (gasGiant.singularity == EPlanetSingularity.MultipleSatellites) {
+                    Debug.Log($"alternatestart -- Removed plural satellites singularity from planet {gasGiant.id}");
+                    gasGiant.singularity = EPlanetSingularity.None;
                 }
             }
         }
