@@ -159,12 +159,7 @@ namespace ZorbsAlternateStart {
             }
 
             void MoveSystemNormal() {
-                PlanetData lowest = otherPlanets[0];
-                foreach(PlanetData planet in otherPlanets) {
-                    if (planet.orbitRadius < lowest.orbitRadius) {
-                        lowest = planet;
-                    }
-                }
+                PlanetData lowest = otherPlanets.OrderBy(x => x.orbitRadius).First();
                 Debug.Log($"alternatestart -- The lowest orbit radius planet was {lowest.id}");
                 PlanetDataHelper.SwapPlanets(ref lowest, ref birthPlanet);
                 PlanetDataHelper.StealMoon(ref birthPlanet, ref lowest);
