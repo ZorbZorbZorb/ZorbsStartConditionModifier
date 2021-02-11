@@ -18,6 +18,7 @@ namespace ZorbsAlternateStart.Helpers {
             int oldOrbitIndex = planet.orbitIndex;
             int oldOrbitAround = planet.orbitAround;
             PlanetData oldOrbitAroundPlanet = planet.orbitAroundPlanet;
+            float oldLuminosity = planet.luminosity;
             float oldOrbitRadius = planet.orbitRadius;
             float oldOrbitPhase = planet.orbitPhase;
             float oldOrbitInclination = planet.orbitInclination;
@@ -36,6 +37,7 @@ namespace ZorbsAlternateStart.Helpers {
             planet.orbitLongitude = otherPlanet.orbitLongitude;
             planet.sunDistance = otherPlanet.sunDistance;
             planet.star = otherPlanet.star;
+            planet.luminosity = otherPlanet.luminosity;
 
             otherPlanet.index = oldIndex;
             otherPlanet.orbitIndex = oldOrbitIndex;
@@ -47,6 +49,7 @@ namespace ZorbsAlternateStart.Helpers {
             otherPlanet.orbitLongitude = oldOrbitLongitude;
             otherPlanet.sunDistance = oldSunDistance;
             otherPlanet.star = oldStarData;
+            otherPlanet.luminosity = oldLuminosity;
             
             // switch runtime locations?
 
@@ -98,6 +101,7 @@ namespace ZorbsAlternateStart.Helpers {
                     possibleMoon.orbitAround = newMoonLocation.orbitIndex;
                     // Update solar energy ratio for moon
                     possibleMoon.sunDistance = newMoonLocation.sunDistance;
+                    possibleMoon.luminosity = newMoonLocation.luminosity;
                 }
             }
         }
@@ -108,6 +112,7 @@ namespace ZorbsAlternateStart.Helpers {
             moon.orbitAround = gru.orbitIndex;
             moon.orbitAroundPlanet = gru;
             moon.sunDistance = gru.sunDistance;
+            moon.luminosity = gru.luminosity;
             // TODO: Add a check for this moon orbit index already being occupied
         }
         public static void ReIndexPlanets(ref StarData star) {

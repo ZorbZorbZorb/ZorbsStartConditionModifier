@@ -27,7 +27,7 @@ namespace ZorbsAlternateStart {
         // All elligable planets are now desert planets, thats my attack
         [HarmonyPrefix, HarmonyPatch(typeof(PlanetGen), "SetPlanetTheme")]
         static void Patch(ref PlanetData planet, ref StarData star, ref GameDesc game_desc) {
-            // Trick the game to spawn a barren planet as the inner most planet
+            // Trick the game to spawn a barren planet as the other planets
             if ( planet.star.index == 0 && planet.type != EPlanetType.Ocean && planet.type != EPlanetType.Gas ) {
                 Debug.Log($"alternatestart -- Forcing planet {planet.star.id}.{planet.id} to desert");
                 planet.type = EPlanetType.Desert;
@@ -37,7 +37,6 @@ namespace ZorbsAlternateStart {
         // This mod works by moving planets at runtime
         [HarmonyPostfix, HarmonyPatch(typeof(UniverseGen), "CreateGalaxy")]
         static void Patch(ref GameDesc gameDesc, ref GalaxyData __result) {
-            Debug.Log("alternatestart -- UniverseGen::CreateGalaxy()");
             GalaxyData galaxy = __result;
             List<PlanetData> gasPlanets = new List<PlanetData>();
             List<PlanetData> otherPlanets = new List<PlanetData>();
@@ -160,7 +159,7 @@ namespace ZorbsAlternateStart {
 
             void MoveSystemNormal() {
                 PlanetData lowest = otherPlanets.OrderBy(x => x.orbitRadius).First();
-                Debug.Log($"alternatestart -- The lowest orbit radius planet was {lowest.id}");
+                //Debug.Log($"alternatestart -- The lowest orbit radius planet was {lowest.id}");
                 PlanetDataHelper.SwapPlanets(ref lowest, ref birthPlanet);
                 PlanetDataHelper.StealMoon(ref birthPlanet, ref lowest);
                 newMoons.Add(lowest);
@@ -207,19 +206,19 @@ namespace ZorbsAlternateStart {
             }
 
             // Remove any dangling multiple moon singularities from gas giants that no longer deserve them
-            void RevokeSingularities(ref PlanetData gasGiant) {
+            void RevokeSingularities(ref PlanetData targetPlanet) {
                 int moonCount = 0;
-                for ( int i = 0; i < gasGiant.star.planets.Count(); i++ ) {
-                    PlanetData planet = gasGiant.star.planets[i];
-                    if (planet.orbitAround == gasGiant.id) {
+                for ( int i = 0; i < targetPlanet.star.planets.Count(); i++ ) {
+                    PlanetData planet = targetPlanet.star.planets[i];
+                    if (planet.orbitAround == targetPlanet.id) {
                         if (moonCount ++ > 1) {
                             return;
                         }
                     }
                 }
-                if (gasGiant.singularity == EPlanetSingularity.MultipleSatellites) {
-                    Debug.Log($"alternatestart -- Removed plural satellites singularity from planet {gasGiant.id}");
-                    gasGiant.singularity = EPlanetSingularity.None;
+                if (targetPlanet.singularity == EPlanetSingularity.MultipleSatellites) {
+                    Debug.Log($"alternatestart -- Removed plural satellites singularity from planet {targetPlanet.id}");
+                    targetPlanet.singularity = EPlanetSingularity.None;
                 }
             }
         }
