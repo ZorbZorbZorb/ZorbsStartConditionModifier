@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 
-namespace ZorbsAlternateStart.Helpers {
+namespace ZorbsAlternativeStart.Helpers {
     public static class GameDescHelper {
         // Print all planet themes
         public static void PrintAllThemes(GameDesc game_desc) {

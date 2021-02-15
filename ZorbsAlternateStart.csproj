@@ -70,12 +70,23 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Helpers\GalaxyDataHelper.cs" />
     <Compile Include="Helpers\GameDescHelper.cs" />
     <Compile Include="Helpers\PlanetDataHelper.cs" />
     <Compile Include="Helpers\ReflectionHelper.cs" />
     <Compile Include="Helpers\StarDataHelper.cs" />
     <Compile Include="AlternativeStartPlugin.cs" />
+    <Compile Include="Patches\LegacyPatchPlanetGen.cs" />
+    <Compile Include="Patches\PatchPlanetAlgorithm.cs" />
+    <Compile Include="Patches\PatchPlanetGen.cs" />
+    <Compile Include="Patches\PatchUniverseGen.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="snippepts.txt" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>Copy /y "C:\Users\Computer\source\dsp_modding\repos\ZorbsStartConditionModifier\bin\Debug\ZorbsAlternativeStart.dll" "C:\Program Files (x86)\Steam\steamapps\common\Dyson Sphere Program\BepInEx\plugins\ZorbsAlternativeStart.dll"</PostBuildEvent>
+  </PropertyGroup>
 </Project>

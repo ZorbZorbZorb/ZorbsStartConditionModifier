@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 
-namespace ZorbsAlternateStart.Helpers {
+namespace ZorbsAlternativeStart.Helpers {
     public static class ReflectionHelper {
         public static object GetField(object target, string fieldName, BindingFlags bindingFlags) {
             Type type = target.GetType();

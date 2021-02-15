@@ -4,10 +4,10 @@ using System.Linq;
 using System.Text;
 using UnityEngine;
 
-namespace ZorbsAlternateStart.Helpers {
+namespace ZorbsAlternativeStart.Helpers {
     public static class PlanetDataHelper {
         public static void SwapPlanets(ref PlanetData planet, ref PlanetData otherPlanet) {
-            Debug.Log($"Swapping star.planet {planet.star.id}.{planet.id} with star.planet {otherPlanet.star.id}.{otherPlanet.id}");
+            Debug.Log($"alternative start -- Swapping star.planet {planet.star.id}.{planet.id} with star.planet {otherPlanet.star.id}.{otherPlanet.id}");
 
             // Handle moons
             TransposeMoons(ref planet, ref otherPlanet);
@@ -96,7 +96,7 @@ namespace ZorbsAlternateStart.Helpers {
             for ( int i = 0; i < oldMoonLocation.star.planets.Length; i++ ) {
                 PlanetData possibleMoon = oldMoonLocation.star.planets[i];
                 if ( possibleMoon?.orbitAroundPlanet?.id == oldMoonLocation.id ) {
-                    Debug.Log($"Transposing star.planet.moon {oldMoonLocation.star.id}.{oldMoonLocation?.orbitAroundPlanet?.id}.{oldMoonLocation.id} to star {newMoonLocation.star.id}");
+                    Debug.Log($"alternative start -- Transposing star.planet.moon {oldMoonLocation.star.id}.{oldMoonLocation?.orbitAroundPlanet?.id}.{oldMoonLocation.id} to star {newMoonLocation.star.id}");
                     possibleMoon.star = newMoonLocation.star;
                     possibleMoon.orbitAround = newMoonLocation.orbitIndex;
                     // Update solar energy ratio for moon
@@ -106,7 +106,7 @@ namespace ZorbsAlternateStart.Helpers {
             }
         }
         public static void StealMoon(ref PlanetData gru, ref PlanetData moon) {
-            Debug.Log($"Stealing star.planet.moon {moon.star.id}.{moon?.orbitAroundPlanet?.id}.{moon.id} for star.planet {gru.star.id}.{gru.id}");
+            Debug.Log($"alternative start -- Stealing star.planet.moon {moon.star.id}.{moon?.orbitAroundPlanet?.id}.{moon.id} for star.planet {gru.star.id}.{gru.id}");
             // Transpose moons
             moon.star = gru.star;
             moon.orbitAround = gru.orbitIndex;
@@ -116,7 +116,7 @@ namespace ZorbsAlternateStart.Helpers {
             // TODO: Add a check for this moon orbit index already being occupied
         }
         public static void ReIndexPlanets(ref StarData star) {
-            Debug.Log($"Reindexing star {star.id} planets");
+            Debug.Log($"alternative start -- Reindexing star {star.id} planets");
             // TODO: Reindex planets in the order that they orbit.
             throw new NotImplementedException("todo");
         }

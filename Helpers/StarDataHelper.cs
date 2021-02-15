@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using UnityEngine;
+﻿using UnityEngine;
 
-namespace ZorbsAlternateStart.Helpers {
+namespace ZorbsAlternativeStart.Helpers {
     public static class StarDataHelper {
         public static void LogStarPlanetInfo(StarData star) {
             PlanetData[] planets = star.planets;
@@ -13,7 +9,7 @@ namespace ZorbsAlternateStart.Helpers {
                 PlanetData planet = planets[i];
                 logString += "\r\n";
                 logString += $"planet id:{planet.id} ";
-                //logString += $"planet star id:{ planet.star.id} ";
+                logString += $"planet star id:{ planet.star.id} ";
                 logString += $"orbitRadius:{planet.orbitRadius} ";
                 logString += $"orbitIndex:{ planet.orbitIndex} ";
                 logString += $"typeString:{planet.typeString} ";
