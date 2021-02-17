@@ -8,10 +8,10 @@ using ZorbsAlternativeStart.Patches;
 [assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
 
 namespace ZorbsAlternativeStart {
-    [BepInPlugin("org.bepinex.plugins.alternatestart", "Zorbs alternative start mod", "1.2.0")]
+    [BepInPlugin("org.bepinex.plugins.alternatestart", "Zorbs alternative start mod", "1.3.0")]
     [BepInProcess("DSPGAME.exe")]
     public class AlternativeStartPlugin : BaseUnityPlugin {
-        public static bool zDebuggingMode = false;
+        public static bool zDebuggingMode = true;
         internal void Awake() {
             Harmony harmony = new Harmony("zorb.dsp.plugins.alternativestart");
             

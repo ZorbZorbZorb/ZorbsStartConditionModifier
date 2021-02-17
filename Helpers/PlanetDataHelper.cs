@@ -15,8 +15,8 @@ namespace ZorbsAlternativeStart.Helpers {
             TransposeMoons(ref otherPlanet, ref planet);
 
             // Copy data from the other planet to the orbit index
-            int oldIndex = planet.index;
-            int oldOrbitIndex = planet.orbitIndex;
+            //int oldIndex = planet.index;
+            //int oldOrbitIndex = planet.orbitIndex;
             int oldOrbitAround = planet.orbitAround;
             PlanetData oldOrbitAroundPlanet = planet.orbitAroundPlanet;
             float oldLuminosity = planet.luminosity;
@@ -28,8 +28,8 @@ namespace ZorbsAlternativeStart.Helpers {
             StarData oldStarData = planet.star;
 
             // Switch planets positions
-            planet.index = otherPlanet.index;
-            planet.orbitIndex = otherPlanet.orbitIndex;
+            //planet.index = otherPlanet.index;
+            //planet.orbitIndex = otherPlanet.orbitIndex;
             planet.orbitAround = otherPlanet.orbitAround;
             planet.orbitAroundPlanet = otherPlanet.orbitAroundPlanet;
             planet.orbitRadius = otherPlanet.orbitRadius;
@@ -40,8 +40,8 @@ namespace ZorbsAlternativeStart.Helpers {
             planet.star = otherPlanet.star;
             planet.luminosity = otherPlanet.luminosity;
 
-            otherPlanet.index = oldIndex;
-            otherPlanet.orbitIndex = oldOrbitIndex;
+            //otherPlanet.index = oldIndex;
+            //otherPlanet.orbitIndex = oldOrbitIndex;
             otherPlanet.orbitAround = oldOrbitAround;
             otherPlanet.orbitAroundPlanet = oldOrbitAroundPlanet;
             otherPlanet.orbitRadius = oldOrbitRadius;
@@ -116,25 +116,105 @@ namespace ZorbsAlternativeStart.Helpers {
             moon.luminosity = gru.luminosity;
             // TODO: Add a check for this moon orbit index already being occupied
         }
-        public static void ReIndexPlanets(ref StarData star) {
-            Debug.Log($"alternative start -- Reindexing star {star.id} planets");
-            PlanetData[] planets = star.planets.Where(x => x.orbitAround == 0).ToArray();
-            PlanetData[] moons = star.planets.Where(x => x.orbitalPeriod != 0).ToArray();
+        public static List<PlanetData> GetMoons(PlanetData planet) {
+            List<PlanetData> moons = new List<PlanetData>();
+            for ( int i = 0; i < planet.star.planets.Length; i++ ) {
+                PlanetData moon = planet.star.planets[i];
+                if ( moon.orbitAroundPlanet == planet ) {
+                    moons.Add(moon);
+                }
+            }
+            return moons;
+        }
+        public static List<PlanetData> GetPlanetsWithMoons(StarData star) {
+            return star.planets.Where(x => star.planets.Where(y => y.orbitAround == x.id).Count() > 0).ToList();
+        }
+        public static void ReIndexPlanets(ref StarData star, int startingPlanetIndex = 1, int step = 1) {
+            Debug.Log($"alternative start -- Started Reindexing star {star.id} planets");
+            PlanetData[] planets = star.planets.Where(x => x.orbitAroundPlanet == null).OrderBy(x => x.orbitRadius).ToArray();
+            Dictionary<PlanetData, List<PlanetData>> planetsAndMoons = new Dictionary<PlanetData, List<PlanetData>>();
+
+            // Debug info
+            //Debug.Log("planets: " + string.Join(",", planets.Select(x => x.id.ToString()).ToArray()));
+            //Debug.Log("planets with moons: " + string.Join(",", planetsAndMoons.Select(x => x.Key.id.ToString()).ToArray()));
+            //planetsAndMoons.ToList().ForEach(x => Debug.Log($"moons of {x.Key.id}: {string.Join(",", x.Value.Select(y => y.id.ToString()).ToArray())}"));
+
+            int orbitIndex = startingPlanetIndex;
+            //int index = 1;
+            for ( int i = 0; i < planets.Length; i++ ) {
+                PlanetData planet = planets[i];
+                //planet.index = index++;
+                planet.orbitIndex = orbitIndex++;
+                Debug.LogWarning($"{planet.id} is a planet and received OI {planet.orbitIndex}");
+                List<PlanetData> moons = GetMoons(planet);
+                int moonIndex = 1;
+                while(true) {
+                    if (moons.Count() < 1) {
+                        break;
+                    }
+                    PlanetData moon = moons.OrderBy(x => x.orbitRadius).First();
+                    moons.Remove(moon);
+                    //moon.index = index++;
+                    moon.orbitIndex = moonIndex++;
+                    Debug.LogWarning($"{moon.id} is a moon and of {planet.id} and received OI {moon.orbitIndex}");
+                }
+            }
+            Debug.Log($"alternative start -- Finished Reindexing star {star.id} planets");
         }
         public static void ReOrbitPlanets(ref StarData star, Random seededRandom) {
             Debug.Log($"alternative start -- Reorbiting star {star.id} planets");
 
-            //for ( int i = 0; i < star.planets.Length; i++ ) {
-            //    PlanetData planetData = star.planets[i];
-            //    if ( planetData.orbitAround == 0 ) {
-            //        num16 = StarGen.orbitRadius[planetData.orbitIndex] * star.orbitScaler;
-            //        float num17 = ( num15 - 1f ) / Mathf.Max(1f, num16) + 1f;
-            //        num16 *= num17;
-            //    }
-            //    else {
-            //        num16 = (float)( (double)( ( 1600f * (float)planetData.orbitIndex + 200f ) * Mathf.Pow(star.orbitScaler, 0.3f) * Mathf.Lerp(num15, 1f, 0.5f) + planetData.orbitAroundPlanet.realRadius ) / 40000.0 );
-            //    }
-            //}
+            for ( int i = 0; i < star.planets.Length; i++ ) {
+                double num2 = seededRandom.NextDouble();
+                double num3 = seededRandom.NextDouble();
+                double num5 = seededRandom.NextDouble();
+                float num15 = Mathf.Pow(1.2f, (float)( num2 * ( num3 - 0.5 ) * 0.5 ));
+                float num16 = 0f;
+
+                PlanetData planetData = star.planets[i];
+
+                // Calculate orbit radius
+                if ( planetData.orbitAround == 0 ) {
+                    num16 = StarGen.orbitRadius[planetData.orbitIndex] * star.orbitScaler;
+                    float num17 = ( num15 - 1f ) / Mathf.Max(1f, num16) + 1f;
+                    num16 *= num17;
+                }
+                else {
+                    num16 = (float)( (double)( ( 1600f * (float)planetData.orbitIndex + 200f ) * Mathf.Pow(star.orbitScaler, 0.3f) * Mathf.Lerp(num15, 1f, 0.5f) + planetData.orbitAroundPlanet.realRadius ) / 40000.0 );
+                }
+
+                // Correct radius, inclination and longitude
+                planetData.orbitRadius = num16;
+                planetData.orbitInclination = (float)( seededRandom.NextDouble() * 16.0 - 8.0 );
+                if ( planetData.orbitAround > 0 ) {
+                    planetData.orbitInclination *= 2.2f;
+                }
+                planetData.orbitLongitude = (float)( num5 * 360.0 );
+
+                // Correct orbital period
+                if ( planetData.orbitAroundPlanet == null ) {
+                    planetData.orbitalPeriod = Math.Sqrt(39.478417604357432 * (double)num16 * (double)num16 * (double)num16 / ( 1.3538551990520382E-06 * (double)star.mass ));
+                }
+                else {
+                    planetData.orbitalPeriod = Math.Sqrt(39.478417604357432 * (double)num16 * (double)num16 * (double)num16 / 1.0830842106853677E-08);
+                }
+
+                // Correct sun distance
+                planetData.sunDistance = ( ( planetData.orbitAround != 0 ) ? planetData.orbitAroundPlanet.orbitRadius : planetData.orbitRadius );
+
+                // Correct luminosity
+                if (planetData.orbitAroundPlanet == null) {
+                    planetData.luminosity = Mathf.Pow(planetData.star.lightBalanceRadius / ( planetData.sunDistance + 0.01f ), 0.6f);
+                    if ( planetData.luminosity > 1f ) {
+                        planetData.luminosity = Mathf.Log(planetData.luminosity) + 1f;
+                        planetData.luminosity = Mathf.Log(planetData.luminosity) + 1f;
+                        planetData.luminosity = Mathf.Log(planetData.luminosity) + 1f;
+                    }
+                }
+            }
+
+            // Fix moon luminosity.
+            star.planets.Where(x => x.orbitAroundPlanet != null).ToList().ForEach(x => x.luminosity = x.orbitAroundPlanet.luminosity);
 
         }
     }

@@ -13,6 +13,7 @@ namespace ZorbsAlternativeStart.Patches {
     public class PatchUniverseGen {
 
         private static Random seededRandom;
+        private static string arrangementString = string.Empty;
 
         [HarmonyPostfix]
         [HarmonyPatch("CreateGalaxy")]
@@ -21,7 +22,9 @@ namespace ZorbsAlternativeStart.Patches {
             GalaxyDataHelper.RepairBirthIds(ref __result);
 
             // Seed rng from galaxy seed for deterministic randomness
+            int seed = gameDesc.galaxySeed;
             seededRandom = new Random(gameDesc.galaxySeed);
+            arrangementString = null;
             
             GalaxyData galaxy = __result;
             List<PlanetData> gasPlanets = new List<PlanetData>();
@@ -41,28 +44,19 @@ namespace ZorbsAlternativeStart.Patches {
                     if (AlternativeStartPlugin.zDebuggingMode) {
                         StarDataHelper.LogStarPlanetInfo(star);
                     }
-                    float newLevel = seededRandom.Next(1, 55) / 100f;
+                    float newLevel = seededRandom.Next(2, 50) / 100f;
                     EStarType needtype = EStarType.MainSeqStar;
                     ESpectrType needSpectr = ESpectrType.G;
                     if (gameDesc.galaxySeed == 16161616) {
                         Debug.LogWarning($"Using anomaly seed {gameDesc.galaxySeed}");
-                        star.overrideName = "Atlas";
                         newLevel = 1f;
                         needtype = EStarType.BlackHole;
                         needSpectr = ESpectrType.X;
-                        star.planets.Select(x => x.luminosity *= 0.33f);
-                        for ( int j = 0; j < star.planets.Length; j++ ) {
-                            Color color = star.planets[j].atmosMaterial.color;
-                            color.r *= 0.33f;
-                            color.g *= 0.33f;
-                            color.b *= 0.33f;
-                            star.planets[j].atmosMaterial.color = color;
-                        }
                     }
                     ModifyStar(ref star, newLevel, needtype, needSpectr);
+                    arrangementString += $"{(int)star.type}{star.spectr.ToString()[0]}";
                     StartModification(ref star);
                     FinalizeModification(ref star);
-                    ExpandOrbits(ref star);
                     // Log new system configuration
                     if ( AlternativeStartPlugin.zDebuggingMode ) {
                         StarDataHelper.LogStarPlanetInfo(star);
@@ -239,7 +233,7 @@ namespace ZorbsAlternativeStart.Patches {
 
                 // Prior run detection;
                 if ( birthPlanet.orbitAroundPlanet == null ) {
-                    Debug.LogWarning("alternatestart -- System was already modified");
+                    Debug.LogWarning("alternatestart -- System was already modified?");
                     return;
                 }
 
@@ -253,7 +247,6 @@ namespace ZorbsAlternativeStart.Patches {
             }
 
             void FinalizeModification(ref StarData star) {
-                CorrectOrbitConflicts();
                 for ( int i = 0; i < gasPlanets.Count(); i++ ) {
                     PlanetData gasPlanet = gasPlanets[i];
                     RevokeSingularities(ref gasPlanet);
@@ -263,6 +256,38 @@ namespace ZorbsAlternativeStart.Patches {
 
                     //birthPlanet.singularity = EPlanetSingularity.MultipleSatellites;
                     //Debug.Log($"alternatestart -- Added plural satellites singularity to planet {birthPlanet.id}");
+                }
+
+                int skip = 1;
+                int step = 1;
+                switch ( star.spectr ) {
+                    case ESpectrType.M:
+                    case ESpectrType.K:
+                    break;
+                    case ESpectrType.G: 
+                    case ESpectrType.F:
+                    skip = 2;
+                    break;
+                    case ESpectrType.A:
+                    skip = 2;
+                    step = 2;
+                    break;
+                    case ESpectrType.B:
+                    skip = 3;
+                    step = 2;
+                    break;
+                    case ESpectrType.O:
+                    case ESpectrType.X:
+                    skip = 4;
+                    step = 2;
+                    break;
+                }
+
+                PlanetDataHelper.ReIndexPlanets(ref star, skip, step);
+                PlanetDataHelper.ReOrbitPlanets(ref star, seededRandom);
+
+                if (star.type == EStarType.BlackHole) {
+                    star.planets.Select(x => x.luminosity *= 0.66f);
                 }
             }
 
@@ -278,87 +303,86 @@ namespace ZorbsAlternativeStart.Patches {
                     PlanetDataHelper.StealMoon(ref birthPlanet, ref moon);
                     newMoons.Add(moon);
                     if ( newMoons.Count() >= 2 ) {
-                        Debug.Log("alternatestart -- Finished swapping planets");
-                        CorrectOrbitConflicts();
-                        return;
+                        Debug.Log("alternatestart -- Birth planet has maximum allowed moons");
+                        break;
                     }
                 }
+
+                Debug.LogWarning($"alternatestart -- New System arrangement is {birthPlanet.theme}E");
             }
 
             void MoveSystemNormal() {
+                double num = seededRandom.NextDouble();
+                double num2 = seededRandom.NextDouble();
+                double num3 = seededRandom.NextDouble();
                 PlanetData lowest = otherPlanets.OrderBy(x => x.orbitRadius).First();
-                //Debug.Log($"alternatestart -- The lowest orbit radius planet was {lowest.id}");
-                PlanetDataHelper.SwapPlanets(ref lowest, ref birthPlanet);
-                PlanetDataHelper.StealMoon(ref birthPlanet, ref lowest);
-                newMoons.Add(lowest);
-                for ( int i = 0; i < moons.Count(); i++ ) {
-                    PlanetData moon = moons[i];
-                    if ( moon.orbitAround != birthPlanet.id && !newMoons.Contains(moon) ) {
-                        PlanetDataHelper.StealMoon(ref birthPlanet, ref moon);
-                        newMoons.Add(moon);
-                        if ( newMoons.Count() >= 2 ) {
-                            CorrectOrbitConflicts();
-                            return;
+                PlanetData highest = otherPlanets.OrderBy(x => x.orbitRadius).Last();
+
+                // How should the system be arranged?
+                if (num > 0.8f) {
+                    arrangementString += 'C';
+                    PlanetDataHelper.SwapPlanets(ref highest, ref birthPlanet);
+                }
+                else if (num > 0.6f) {
+                    arrangementString += 'B';
+                    PlanetDataHelper.SwapPlanets(ref lowest, ref birthPlanet);
+                }
+                else {
+                    if (gasPlanets.Count() > 0) {
+                        arrangementString += 'A';
+                        PlanetData gasPlanet = gasPlanets[0];
+                        PlanetDataHelper.SwapPlanets(ref lowest, ref birthPlanet);
+                        PlanetDataHelper.SwapPlanets(ref gasPlanet, ref birthPlanet);
+                    }
+                    else {
+                        PlanetDataHelper.SwapPlanets(ref lowest, ref birthPlanet);
+                        arrangementString += 'D';
+                    }
+                }
+                if (num2 > 0.30d) {
+                    arrangementString += 'A';
+                    PlanetDataHelper.StealMoon(ref birthPlanet, ref lowest);
+                    newMoons.Add(lowest);
+                    for ( int i = 0; i < moons.Count(); i++ ) {
+                        PlanetData moon = moons[i];
+                        if ( moon.orbitAround != birthPlanet.id && !newMoons.Contains(moon) ) {
+                            PlanetDataHelper.StealMoon(ref birthPlanet, ref moon);
+                            newMoons.Add(moon);
+                            if ( newMoons.Count() >= 2 ) {
+                                Debug.Log("alternatestart -- Birth planet has maximum allowed moons");
+                                break;
+                            }
+                        }
+
+                    }
+                }
+                else {
+                    arrangementString += 'B';
+                }
+
+                // Orphan a gas giant moon?
+                if (num3 > 0.6d) {
+                    bool demooned = false;
+                    for ( int i = 0; i < birthPlanet.star.planets.Length; i++ ) {
+                        PlanetData moon = birthPlanet.star.planets[i];
+                        if (moon.orbitAround != 0 && moon.orbitalPeriod != birthPlanet.id) {
+                            moon.orbitRadius = moon.orbitAroundPlanet.orbitRadius * 1.2f;
+                            moon.orbitAroundPlanet = null;
+                            moon.orbitAround = 0;
+                            demooned = true;
+                            arrangementString += 'A';
+                            break;
                         }
                     }
-
-                }
-                Debug.Log("alternatestart -- Finished swapping planets");
-            }
-
-            void CorrectOrbitConflicts() {
-                // Order the moons by orbit radius, lowest to highest
-                Debug.Log("alternatestart -- Started correcting orbits");
-                List<PlanetData> orderedMoons = new List<PlanetData>();
-                for ( int i = 0; i < newMoons.Count(); i++ ) {
-                    PlanetData lowest = newMoons[i];
-                    for ( int j = 0; j < newMoons.Count(); j++ ) {
-                        if ( orderedMoons.Contains(newMoons[j]) ) {
-                            continue;
-                        }
-                        if ( lowest.orbitRadius > newMoons[j].orbitRadius ) {
-                            lowest = newMoons[j];
-                        }
-                    }
-                    orderedMoons.Add(lowest);
-                }
-
-                for ( int i = 0; i < newMoons.Count() - 1; i++ ) {
-                    PlanetData moon = newMoons[i];
-                    PlanetData nextMoon = newMoons[i + 1];
-                    float difference = nextMoon.orbitRadius - moon.orbitRadius;
-                    if (AlternativeStartPlugin.zDebuggingMode) {
-                        Debug.Log(moon.orbitRadius);
-                        Debug.Log(nextMoon.orbitRadius);
-                        Debug.Log("    " + difference);
+                    if (!demooned) {
+                        arrangementString += 'B';
                     }
                 }
-                Debug.Log("alternatestart -- Finished correcting orbits");
-            }
+                else {
+                    arrangementString += 'B';
+                }
 
-            void ExpandOrbits(ref StarData star) {
-                Debug.Log("Started expanding orbits");
-                float multiplier = 1f;
-                switch (star.type) {
-                    case EStarType.GiantStar:
-                        multiplier = (star.luminosity * star.luminosity) * star.radius / 2.5f;
-                    break;
-                    case EStarType.BlackHole:
-                        multiplier = 12f;
-                    break;
-                    default:
-                        multiplier = star.luminosity * star.radius;
-                    break;
-                }
-                Debug.Log($"Planet orbit radius multiplier is {multiplier}f calculated from l*r {star.luminosity}f*{star.radius}f");
-                for ( int i = 0; i < star.planets.Count(); i++ ) {
-                    PlanetData planet = star.planets[i]; 
-                    if (planet.orbitAround == 0 ) {
-                        planet.orbitRadius = planet.orbitRadius * multiplier;
-                        planet.orbitalPeriod = planet.orbitalPeriod * multiplier;
-                    }
-                }
-                Debug.Log("Finished expanding orbits");
+                Debug.LogWarning($"alternatestart -- New System arrangement is {arrangementString}");
             }
 
             // Remove any dangling multiple moon singularities from gas giants that no longer deserve them
