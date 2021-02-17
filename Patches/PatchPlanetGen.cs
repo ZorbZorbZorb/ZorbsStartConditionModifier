@@ -13,14 +13,24 @@ namespace ZorbsAlternativeStart.Patches {
 
 		[HarmonyPrefix]
 		[HarmonyPatch("SetPlanetTheme")]
-		static void SetPlanetTheme(
+		static bool SetPlanetTheme(
 			ref PlanetData planet, ref StarData star, ref GameDesc game_desc, ref int set_theme, ref int set_algo,
 			ref double rand1, ref double rand2, ref double rand3, ref double rand4, ref int theme_seed) {
 			// Change the theme algorithm for the starting star system
 			if ( star.id == 1 ) {
 				if ( planet.type == EPlanetType.Ocean ) {
-					int newType = newSpawnPlanetTypes.ChooseRandomUsingDSPRand(rand1);
+					int newType;
+					if (rand1 > 0.60d) {
+						newType = 8;
+					}
+					else if (rand1 > 0.20d) {
+						newType = 14;
+                    }
+					else {
+						newType = 1;
+                    }
 					ChangePlanetTheme(ref planet, newType, rand2, rand3, rand4);
+					return false;
 				}
 				else if ( planet.type == EPlanetType.Gas ) {
 
@@ -29,6 +39,7 @@ namespace ZorbsAlternativeStart.Patches {
 
 				}
 			}
+			return true;
 		}
 
 		static void ChangePlanetTheme(ref PlanetData planet, int type, double rand2, double rand3, double rand4) {

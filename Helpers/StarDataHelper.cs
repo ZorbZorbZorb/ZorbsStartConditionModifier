@@ -14,6 +14,7 @@ namespace ZorbsAlternativeStart.Helpers {
                 logString += $"{planet.singularityString.Translate()} ";
                 logString += $"orbitsAround:{planet.orbitAround} ";
                 logString += $"orbitRadius:{planet.orbitRadius} ";
+                logString += $"Index:{planet.index} ";
                 logString += $"orbitIndex:{ planet.orbitIndex} ";
             }
             Debug.Log(logString);
