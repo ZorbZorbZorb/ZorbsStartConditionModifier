@@ -4,12 +4,15 @@ using System.Linq;
 using System.Text;
 using HarmonyLib;
 using UnityEngine;
+using ZorbsAlternativeStart.Extensions;
 using ZorbsAlternativeStart.Helpers;
+using Random = System.Random;
 
 namespace ZorbsAlternativeStart.Patches {
     [HarmonyPatch(typeof(UniverseGen))]
     public class PatchUniverseGen {
-        private static readonly bool enabled = true;
+
+        private static Random seededRandom;
 
         [HarmonyPostfix]
         [HarmonyPatch("CreateGalaxy")]
@@ -17,10 +20,9 @@ namespace ZorbsAlternativeStart.Patches {
         static void CreateGalaxy(ref GameDesc gameDesc, ref GalaxyData __result) {
             GalaxyDataHelper.RepairBirthIds(ref __result);
 
-            if ( !enabled ) {
-                return;
-            }
-
+            // Seed rng from galaxy seed for deterministic randomness
+            seededRandom = new Random(gameDesc.galaxySeed);
+            
             GalaxyData galaxy = __result;
             List<PlanetData> gasPlanets = new List<PlanetData>();
             List<PlanetData> otherPlanets = new List<PlanetData>();
@@ -36,14 +38,154 @@ namespace ZorbsAlternativeStart.Patches {
                 StarData star = __result.stars[i];
                 // If starting star
                 if ( star.index == 0 ) {
-                    if (AlternativeStartPlugin.zDebuggingMode)
+                    if (AlternativeStartPlugin.zDebuggingMode) {
                         StarDataHelper.LogStarPlanetInfo(star);
+                    }
+                    float newLevel = seededRandom.Next(1, 55) / 100f;
+                    EStarType needtype = EStarType.MainSeqStar;
+                    ESpectrType needSpectr = ESpectrType.G;
+                    if (gameDesc.galaxySeed == 16161616) {
+                        Debug.LogWarning($"Using anomaly seed {gameDesc.galaxySeed}");
+                        star.overrideName = "Atlas";
+                        newLevel = 1f;
+                        needtype = EStarType.BlackHole;
+                        needSpectr = ESpectrType.X;
+                        star.planets.Select(x => x.luminosity *= 0.33f);
+                        for ( int j = 0; j < star.planets.Length; j++ ) {
+                            Color color = star.planets[j].atmosMaterial.color;
+                            color.r *= 0.33f;
+                            color.g *= 0.33f;
+                            color.b *= 0.33f;
+                            star.planets[j].atmosMaterial.color = color;
+                        }
+                    }
+                    ModifyStar(ref star, newLevel, needtype, needSpectr);
                     StartModification(ref star);
                     FinalizeModification(ref star);
+                    ExpandOrbits(ref star);
                     // Log new system configuration
-                    if ( AlternativeStartPlugin.zDebuggingMode )
+                    if ( AlternativeStartPlugin.zDebuggingMode ) {
                         StarDataHelper.LogStarPlanetInfo(star);
+                    }
                 }
+            }
+
+            void ModifyStar(ref StarData star, float newLevel, EStarType needtype, ESpectrType needSpectr) {
+                Debug.Log($"Started modifying birth star to level {newLevel}f");
+
+                // Possibly allow starting systems to be a giant M-class?
+
+                star.spectr = needSpectr;
+
+                double num3 = seededRandom.NextDouble();
+                double num4 = seededRandom.NextDouble();
+                double numStarAgeRandomizer = seededRandom.NextDouble();
+                double num6 = ( seededRandom.NextDouble() - 0.5 ) * 0.2;
+                double num7 = seededRandom.NextDouble() * 0.2 + 0.9;
+                double num8 = seededRandom.NextDouble() * 0.4 - 0.2;
+                double num9 = Math.Pow(2.0, num8);
+                // modification to allow better class stars
+                float num10 = Mathf.Lerp(-0.98f, 0.88f, newLevel);
+                num10 = ( ( !( num10 < 0f ) ) ? ( num10 + 0.65f ) : ( num10 - 0.65f ) );
+                float standardDeviation = 0.33f;
+                float num11 = StarGen.RandNormal(num10, standardDeviation, num3, num4);
+
+                switch ( needSpectr ) {
+                    case ESpectrType.M:
+                    num11 = -3f;
+                    break;
+                    case ESpectrType.O:
+                    num11 = 3f;
+                    break;
+                }
+
+                num11 = ( ( !( num11 > 0f ) ) ? ( num11 * 1f ) : ( num11 * 2f ) );
+                num11 = Mathf.Clamp(num11, -2.4f, 4.65f) + (float)num6 + 1f;
+
+                star.mass = Mathf.Pow(2f, num11);
+
+                double d = 5.0;
+
+                if ( star.mass < 2f ) {
+                    d = 2.0 + 0.4 * ( 1.0 - (double)star.mass );
+                }
+                star.lifetime = (float)( 10000.0 * Math.Pow(0.1, Math.Log10((double)star.mass * 0.5) / Math.Log10(d) + 1.0) * num7 );
+
+
+                switch ( needtype ) {
+                    case EStarType.BlackHole:
+                    star.mass = 18f + (float)( num3 * num4 ) * 30f;
+                    break;
+                    case EStarType.GiantStar:
+                    star.lifetime = (float)( 10000.0 * Math.Pow(0.1, Math.Log10((double)star.mass * 0.58) / Math.Log10(d) + 1.0) * num7 );
+                    star.age = (float)numStarAgeRandomizer * 0.04f + 0.96f;
+                    break;
+                    default:
+                    if ( (double)star.mass < 0.5 ) {
+                        star.age = (float)numStarAgeRandomizer * 0.12f + 0.02f;
+                    }
+                    else if ( (double)star.mass < 0.8 ) {
+                        star.age = (float)numStarAgeRandomizer * 0.4f + 0.1f;
+                    }
+                    else {
+                        star.age = (float)numStarAgeRandomizer * 0.7f + 0.2f;
+                    }
+                    break;
+                }
+
+                if (needtype == EStarType.BlackHole) {
+			        star.age = (float)numStarAgeRandomizer * 0.4f + 1f;
+                }
+
+                float num12 = star.lifetime * star.age;
+                if ( num12 > 5000f ) {
+                    num12 = ( Mathf.Log(num12 / 5000f) + 1f ) * 5000f;
+                }
+                if ( num12 > 8000f ) {
+                    float f = num12 / 8000f;
+                    f = Mathf.Log(f) + 1f;
+                    f = Mathf.Log(f) + 1f;
+                    f = Mathf.Log(f) + 1f;
+                    num12 = f * 8000f;
+                }
+                star.lifetime = num12 / star.age;
+                float num13 = ( 1f - Mathf.Pow(Mathf.Clamp01(star.age), 20f) * 0.5f ) * star.mass;
+                star.temperature = (float)( Math.Pow(num13, 0.56 + 0.14 / ( Math.Log10(num13 + 4f) / Math.Log10(5.0) )) * 4450.0 + 1300.0 );
+                double num14 = Math.Log10(( (double)star.temperature - 1300.0 ) / 4500.0) / Math.Log10(2.6) - 0.5;
+                if ( num14 < 0.0 ) {
+                    num14 *= 4.0;
+                }
+                if ( num14 > 2.0 ) {
+                    num14 = 2.0;
+                }
+                else if ( num14 < -4.0 ) {
+                    num14 = -4.0;
+                }
+                star.spectr = (ESpectrType)Mathf.RoundToInt((float)num14 + 4f);
+                star.color = Mathf.Clamp01(( (float)num14 + 3.5f ) * 0.2f);
+                star.classFactor = (float)num14;
+                star.luminosity = Mathf.Pow(num13, 0.7f);
+                star.radius = (float)( Math.Pow(star.mass, 0.4) * num9 );
+                star.acdiskRadius = 0f;
+                float p = (float)num14 + 2f;
+                star.habitableRadius = Mathf.Pow(1.7f, p) + 0.25f * Mathf.Min(1f, star.orbitScaler);
+                star.lightBalanceRadius = Mathf.Pow(1.7f, p);
+                star.orbitScaler = Mathf.Pow(1.35f, p);
+                if ( star.orbitScaler < 1f ) {
+                    star.orbitScaler = Mathf.Lerp(star.orbitScaler, 1f, 0.6f);
+                }
+
+                double rn = seededRandom.NextDouble();
+                double rt = seededRandom.NextDouble();
+                StarGen.SetStarAge(star, star.age, rn, rt);
+
+                star.dysonRadius = star.orbitScaler * 0.28f;
+                if ( (double)star.dysonRadius * 40000.0 < (double)( star.physicsRadius * 1.5f ) ) {
+                    star.dysonRadius = (float)( (double)( star.physicsRadius * 1.5f ) / 40000.0 );
+                }
+                star.uPosition = star.position * 2400000.0;
+
+                Debug.Log($"Finished modifying birth star. Now a {star.spectr} class {star.type}...");
             }
 
             void StartModification(ref StarData star) {
@@ -111,7 +253,7 @@ namespace ZorbsAlternativeStart.Patches {
             }
 
             void FinalizeModification(ref StarData star) {
-                CorrectOrbits();
+                CorrectOrbitConflicts();
                 for ( int i = 0; i < gasPlanets.Count(); i++ ) {
                     PlanetData gasPlanet = gasPlanets[i];
                     RevokeSingularities(ref gasPlanet);
@@ -137,7 +279,7 @@ namespace ZorbsAlternativeStart.Patches {
                     newMoons.Add(moon);
                     if ( newMoons.Count() >= 2 ) {
                         Debug.Log("alternatestart -- Finished swapping planets");
-                        CorrectOrbits();
+                        CorrectOrbitConflicts();
                         return;
                     }
                 }
@@ -155,7 +297,7 @@ namespace ZorbsAlternativeStart.Patches {
                         PlanetDataHelper.StealMoon(ref birthPlanet, ref moon);
                         newMoons.Add(moon);
                         if ( newMoons.Count() >= 2 ) {
-                            CorrectOrbits();
+                            CorrectOrbitConflicts();
                             return;
                         }
                     }
@@ -164,7 +306,7 @@ namespace ZorbsAlternativeStart.Patches {
                 Debug.Log("alternatestart -- Finished swapping planets");
             }
 
-            void CorrectOrbits() {
+            void CorrectOrbitConflicts() {
                 // Order the moons by orbit radius, lowest to highest
                 Debug.Log("alternatestart -- Started correcting orbits");
                 List<PlanetData> orderedMoons = new List<PlanetData>();
@@ -192,6 +334,31 @@ namespace ZorbsAlternativeStart.Patches {
                     }
                 }
                 Debug.Log("alternatestart -- Finished correcting orbits");
+            }
+
+            void ExpandOrbits(ref StarData star) {
+                Debug.Log("Started expanding orbits");
+                float multiplier = 1f;
+                switch (star.type) {
+                    case EStarType.GiantStar:
+                        multiplier = (star.luminosity * star.luminosity) * star.radius / 2.5f;
+                    break;
+                    case EStarType.BlackHole:
+                        multiplier = 12f;
+                    break;
+                    default:
+                        multiplier = star.luminosity * star.radius;
+                    break;
+                }
+                Debug.Log($"Planet orbit radius multiplier is {multiplier}f calculated from l*r {star.luminosity}f*{star.radius}f");
+                for ( int i = 0; i < star.planets.Count(); i++ ) {
+                    PlanetData planet = star.planets[i]; 
+                    if (planet.orbitAround == 0 ) {
+                        planet.orbitRadius = planet.orbitRadius * multiplier;
+                        planet.orbitalPeriod = planet.orbitalPeriod * multiplier;
+                    }
+                }
+                Debug.Log("Finished expanding orbits");
             }
 
             // Remove any dangling multiple moon singularities from gas giants that no longer deserve them

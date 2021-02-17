@@ -14,8 +14,9 @@ namespace ZorbsAlternativeStart {
         public static bool zDebuggingMode = false;
         internal void Awake() {
             Harmony harmony = new Harmony("zorb.dsp.plugins.alternativestart");
-
+            
             Harmony.CreateAndPatchAll(typeof(PatchPlanetGen), harmony.Id);
+            //Harmony.CreateAndPatchAll(typeof(PatchStarGen), harmony.Id);
             Harmony.CreateAndPatchAll(typeof(PatchUniverseGen), harmony.Id);
         }
     }

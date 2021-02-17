@@ -8,13 +8,13 @@ namespace ZorbsAlternativeStart.Helpers {
             for ( int i = 0; i < planets.Length; i++ ) {
                 PlanetData planet = planets[i];
                 logString += "\r\n";
-                logString += $"planet id:{planet.id} ";
-                logString += $"planet star id:{ planet.star.id} ";
+                logString += $"id {star.id}.{planet.id} ";
+                logString += $"{planet.typeString} ";
+                logString += $"type:{planet.type} ";
+                logString += $"{planet.singularityString.Translate()} ";
+                logString += $"orbitsAround:{planet.orbitAround} ";
                 logString += $"orbitRadius:{planet.orbitRadius} ";
                 logString += $"orbitIndex:{ planet.orbitIndex} ";
-                logString += $"typeString:{planet.typeString} ";
-                logString += $"orbitsAround:{planet.orbitAround} ";
-                logString += $"orbitAroundPlanet:{planet?.orbitAroundPlanet?.id}";
             }
             Debug.Log(logString);
         }

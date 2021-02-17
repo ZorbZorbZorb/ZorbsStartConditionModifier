@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using UnityEngine;
+using Random = System.Random;
 
 namespace ZorbsAlternativeStart.Helpers {
     public static class PlanetDataHelper {
@@ -117,8 +118,24 @@ namespace ZorbsAlternativeStart.Helpers {
         }
         public static void ReIndexPlanets(ref StarData star) {
             Debug.Log($"alternative start -- Reindexing star {star.id} planets");
-            // TODO: Reindex planets in the order that they orbit.
-            throw new NotImplementedException("todo");
+            PlanetData[] planets = star.planets.Where(x => x.orbitAround == 0).ToArray();
+            PlanetData[] moons = star.planets.Where(x => x.orbitalPeriod != 0).ToArray();
+        }
+        public static void ReOrbitPlanets(ref StarData star, Random seededRandom) {
+            Debug.Log($"alternative start -- Reorbiting star {star.id} planets");
+
+            //for ( int i = 0; i < star.planets.Length; i++ ) {
+            //    PlanetData planetData = star.planets[i];
+            //    if ( planetData.orbitAround == 0 ) {
+            //        num16 = StarGen.orbitRadius[planetData.orbitIndex] * star.orbitScaler;
+            //        float num17 = ( num15 - 1f ) / Mathf.Max(1f, num16) + 1f;
+            //        num16 *= num17;
+            //    }
+            //    else {
+            //        num16 = (float)( (double)( ( 1600f * (float)planetData.orbitIndex + 200f ) * Mathf.Pow(star.orbitScaler, 0.3f) * Mathf.Lerp(num15, 1f, 0.5f) + planetData.orbitAroundPlanet.realRadius ) / 40000.0 );
+            //    }
+            //}
+
         }
     }
 }

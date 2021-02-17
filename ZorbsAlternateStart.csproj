@@ -70,6 +70,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Extensions\ArrayExtensions.cs" />
     <Compile Include="Helpers\GalaxyDataHelper.cs" />
     <Compile Include="Helpers\GameDescHelper.cs" />
     <Compile Include="Helpers\PlanetDataHelper.cs" />
@@ -79,6 +80,7 @@
     <Compile Include="Patches\LegacyPatchPlanetGen.cs" />
     <Compile Include="Patches\PatchPlanetAlgorithm.cs" />
     <Compile Include="Patches\PatchPlanetGen.cs" />
+    <Compile Include="Patches\PatchStarGen.cs" />
     <Compile Include="Patches\PatchUniverseGen.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
