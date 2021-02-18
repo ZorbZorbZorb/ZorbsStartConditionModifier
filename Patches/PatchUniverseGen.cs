@@ -44,7 +44,8 @@ namespace ZorbsAlternativeStart.Patches {
                     if (AlternativeStartPlugin.zDebuggingMode) {
                         StarDataHelper.LogStarPlanetInfo(star);
                     }
-                    float newLevel = seededRandom.Next(2, 50) / 100f;
+                    // Edit the starting star
+                    float newLevel = seededRandom.Next(15, 500) / 1000f;
                     EStarType needtype = EStarType.MainSeqStar;
                     ESpectrType needSpectr = ESpectrType.G;
                     if (gameDesc.galaxySeed == 16161616) {
@@ -53,8 +54,16 @@ namespace ZorbsAlternativeStart.Patches {
                         needtype = EStarType.BlackHole;
                         needSpectr = ESpectrType.X;
                     }
+                    else if (gameDesc.galaxySeed == 00000000) {
+                        Debug.LogWarning($"Using anomaly seed {gameDesc.galaxySeed}");
+                        needSpectr = ESpectrType.O;
+                    }
+                    else if (newLevel < 0.03f) {
+                        needtype = EStarType.GiantStar;
+                        needSpectr = ESpectrType.M;
+                    }
                     ModifyStar(ref star, newLevel, needtype, needSpectr);
-                    arrangementString += $"{(int)star.type}{star.spectr.ToString()[0]}";
+                    arrangementString += $"{(int)star.type}{star.spectr.ToString()[0]}{birthPlanet.theme}";
                     StartModification(ref star);
                     FinalizeModification(ref star);
                     // Log new system configuration
@@ -260,28 +269,38 @@ namespace ZorbsAlternativeStart.Patches {
 
                 int skip = 1;
                 int step = 1;
-                switch ( star.spectr ) {
-                    case ESpectrType.M:
-                    case ESpectrType.K:
+                switch ( star.type ) {
+                    case EStarType.GiantStar:
+                    skip += 7;
                     break;
-                    case ESpectrType.G: 
-                    case ESpectrType.F:
-                    skip = 2;
-                    break;
-                    case ESpectrType.A:
-                    skip = 2;
-                    step = 2;
-                    break;
-                    case ESpectrType.B:
-                    skip = 3;
-                    step = 2;
-                    break;
-                    case ESpectrType.O:
-                    case ESpectrType.X:
-                    skip = 4;
-                    step = 2;
+                    default:
+                    switch ( star.spectr ) {
+                        case ESpectrType.M:
+                        case ESpectrType.K:
+                            break;
+                        case ESpectrType.G: 
+                        case ESpectrType.F:
+                            skip = 2;
+                            break;
+                        case ESpectrType.A:
+                            skip = 2;
+                            step = 2;
+                            break;
+                        case ESpectrType.B:
+                            skip = 3;
+                            step = 2;
+                            break;
+                        case ESpectrType.O:
+                            skip = 8;
+                            break;
+                        case ESpectrType.X:
+                            skip = 4;
+                            step = 2;
+                            break;
+                    }
                     break;
                 }
+
 
                 PlanetDataHelper.ReIndexPlanets(ref star, skip, step);
                 PlanetDataHelper.ReOrbitPlanets(ref star, seededRandom);
@@ -308,7 +327,7 @@ namespace ZorbsAlternativeStart.Patches {
                     }
                 }
 
-                Debug.LogWarning($"alternatestart -- New System arrangement is {birthPlanet.theme}E");
+                Debug.LogWarning($"alternatestart -- New System arrangement is peacock");
             }
 
             void MoveSystemNormal() {
