@@ -41,6 +41,8 @@ namespace ZorbsAlternativeStart.Patches {
                 StarData star = __result.stars[i];
                 // If starting star
                 if ( star.index == 0 ) {
+                    GSCompatPatch(ref star);
+
                     if (AlternativeStartPlugin.zDebuggingMode) {
                         StarDataHelper.LogStarPlanetInfo(star);
                     }
@@ -70,6 +72,43 @@ namespace ZorbsAlternativeStart.Patches {
                     if ( AlternativeStartPlugin.zDebuggingMode ) {
                         StarDataHelper.LogStarPlanetInfo(star);
                     }
+                }
+            }
+
+            void GSCompatPatch(ref StarData star) {
+                int oceans = 0;
+                for ( int i = 0; i < star.planets.Length; i++ ) {
+                    PlanetData planet = star.planets[i];
+                    if ( planet.type == EPlanetType.Ocean) {
+                        oceans++;
+                    }
+                }
+                if (oceans < 1) {
+                    Debug.LogWarning($"Invalid starting system detected. Attempting to correct...");
+
+                    // Look for a gas giant moon to turn into an ocean
+                    for ( int i = 0; i < star.planets.Length; i++ ) {
+                        PlanetData planet = star.planets[i];
+                        if (planet.orbitAroundPlanet != null && planet.orbitAroundPlanet.type == EPlanetType.Gas) {
+                            Random seededRandom2 = new Random(seed);
+                            PatchPlanetGen.ChangePlanetTheme(ref planet, 8, seededRandom2.NextDouble(), seededRandom2.NextDouble(), seededRandom2.NextDouble());
+                            Debug.LogWarning($"Invalid starting system corrected.");
+                            return;
+                        }
+                    }
+
+                    // Turn any non-gas planet into an ocean
+                    for ( int i = star.planets.Length; i > 0; i-- ) {
+                        PlanetData planet = star.planets[i];
+                        if ( planet.type != EPlanetType.Gas ) {
+                            Random seededRandom2 = new Random(seed);
+                            PatchPlanetGen.ChangePlanetTheme(ref planet, 8, seededRandom2.NextDouble(), seededRandom2.NextDouble(), seededRandom2.NextDouble());
+                            Debug.LogWarning($"Invalid starting system corrected.");
+                            return;
+                        }
+                    }
+
+                    Debug.LogError($"Failed to correct invalid starting system.");
                 }
             }
 

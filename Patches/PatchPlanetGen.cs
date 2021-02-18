@@ -20,12 +20,19 @@ namespace ZorbsAlternativeStart.Patches {
 			if ( star.id == 1 ) {
 				if ( planet.type == EPlanetType.Ocean ) {
 					int newType;
-					if (rand1 > 0.60d) {
+					// 35% chance for a oceanic jungle
+					if (rand1 > 0.65d) {
 						newType = 8;
 					}
-					else if (rand1 > 0.20d) {
+					// 35% chance for a red stone
+					else if (rand1 > 0.30d) {
 						newType = 14;
                     }
+					// 20% chance for a prarie
+					else if (rand1 > 0.10d) {
+						newType = 15;
+                    }
+					// 10% chance for a terran
 					else {
 						newType = 1;
                     }
@@ -42,7 +49,7 @@ namespace ZorbsAlternativeStart.Patches {
 			return true;
 		}
 
-		static void ChangePlanetTheme(ref PlanetData planet, int type, double rand2, double rand3, double rand4) {
+		public static void ChangePlanetTheme(ref PlanetData planet, int type, double rand2, double rand3, double rand4) {
 			ThemeProto theme = LDB.themes.Select(type);
 			if ( theme == null ) {
 				Debug.LogError($"alternative start -- FATAL: Failed to find theme '{type}'");
