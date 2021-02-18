@@ -8,7 +8,7 @@ using ZorbsAlternativeStart.Patches;
 [assembly: SecurityPermission(SecurityAction.RequestMinimum, SkipVerification = true)]
 
 namespace ZorbsAlternativeStart {
-    [BepInPlugin("org.bepinex.plugins.alternatestart", "Zorbs alternative start mod", "1.3.1")]
+    [BepInPlugin("org.bepinex.plugins.alternatestart", "Zorbs alternative start mod", "1.3.2")]
     [BepInProcess("DSPGAME.exe")]
     public class AlternativeStartPlugin : BaseUnityPlugin {
         public static bool zDebuggingMode = true;

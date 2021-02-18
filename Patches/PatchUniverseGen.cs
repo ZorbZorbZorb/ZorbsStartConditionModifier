@@ -63,7 +63,7 @@ namespace ZorbsAlternativeStart.Patches {
                         needSpectr = ESpectrType.M;
                     }
                     ModifyStar(ref star, newLevel, needtype, needSpectr);
-                    arrangementString += $"{(int)star.type}{star.spectr.ToString()[0]}{birthPlanet.theme}";
+                    arrangementString += $"{(int)star.type}{star.spectr.ToString()[0]}";
                     StartModification(ref star);
                     FinalizeModification(ref star);
                     // Log new system configuration
